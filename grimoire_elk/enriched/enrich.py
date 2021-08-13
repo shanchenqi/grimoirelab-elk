@@ -1049,7 +1049,7 @@ class Enrich(ElasticItems):
         # Onion currently does not support incremental option
         logger.info("{} Creating out ES index".format(log_prefix))
         # Initialize out index
-        if self.elastic.major == '7':
+        if self.elastic.major == '7' or self.elastic.major == '1':
             filename = pkg_resources.resource_filename('grimoire_elk', 'enriched/mappings/onion_es7.json')
         else:
             filename = pkg_resources.resource_filename('grimoire_elk', 'enriched/mappings/onion.json')
