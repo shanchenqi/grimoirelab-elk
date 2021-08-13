@@ -71,7 +71,7 @@ def get_repository_filter(perceval_backend, perceval_backend_name, term=False):
                        "value": value}
         else:
             filter_ = '''
-                {"term":
+                {"match":
                     { "%s" : "%s"  }
                 }
             ''' % (field, value)
