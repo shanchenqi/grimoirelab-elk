@@ -291,14 +291,14 @@ class ElasticItems:
             if self.filter_raw:
                 for fltr in self.filter_raw_dict:
                     filters += '''
-                        , {"term":
+                        , {"match":
                             { "%s":"%s"  }
                         }
                     ''' % (fltr['name'], fltr['value'])
 
             if _filter:
                 filter_str = '''
-                    , {"terms":
+                    , {"match":
                         { "%s": %s }
                     }
                 ''' % (_filter['name'], _filter['value'])
@@ -343,7 +343,7 @@ class ElasticItems:
             {
                 "query": {
                     "bool": {
-                        "filter": [%s]
+                        "must": [%s]
                     }
                 } %s
             }
