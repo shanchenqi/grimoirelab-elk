@@ -295,7 +295,7 @@ class ElasticSearch(object):
     def get_bulk_url(self):
         """Get the bulk URL endpoint"""
 
-        if self.major == '7':
+        if self.major == '7' or self.major == '1':
             bulk_url = self.index_url + '/_bulk'
         else:
             bulk_url = self.index_url + '/items/_bulk'
@@ -307,7 +307,7 @@ class ElasticSearch(object):
 
         :param _type: type of the mapping. In case of ES7, it is None
         """
-        if self.major == '7':
+        if self.major == '7' or self.major == '1':
             mapping_url = self.index_url + "/_mapping"
         else:
             mapping_url = self.index_url + "/" + _type + "/_mapping"

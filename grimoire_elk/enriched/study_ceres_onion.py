@@ -172,7 +172,7 @@ class ESOnionConnector(ESConnector):
                 "_source": row
             }
 
-            if self._es_major == '7':
+            if self._es_major == '7' or self._es_major == '1':
                 doc.pop('_type')
 
             docs.append(doc)
