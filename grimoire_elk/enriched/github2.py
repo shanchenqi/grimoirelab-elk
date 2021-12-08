@@ -41,6 +41,10 @@ ISSUE_COMMENT_TYPE = 'issue_comment'
 REVIEW_COMMENT_TYPE = 'review_comment'
 REPOSITORY_TYPE = 'repository'
 
+USER_NOT_AVAILABLE = {'organizations': []}
+DELETED_USER_LOGIN = 'ghost'
+DELETED_USER_NAME = 'Deleted user'
+
 logger = logging.getLogger(__name__)
 
 
@@ -110,6 +114,7 @@ class GitHubEnrich2(Enrich):
         self.studies.append(self.enrich_geolocation)
         self.studies.append(self.enrich_feelings)
         self.studies.append(self.enrich_extra_data)
+        self.studies.append(self.enrich_demography)
 
     def set_elastic(self, elastic):
         self.elastic = elastic
@@ -163,9 +168,9 @@ class GitHubEnrich2(Enrich):
         if not user:
             return identity
 
-        identity['name'] = user.get('login', None)
-        identity['username'] = user.get('username', None)
+        identity['name'] = user.get('name', user.get('login', None))
         identity['email'] = user.get('email', None)
+        identity['username'] = user.get('username', user.get('login', None))
 
         return identity
 
@@ -177,13 +182,34 @@ class GitHubEnrich2(Enrich):
         """Get the first date at which a comment or reaction was made to the issue by someone
         other than the user who created the issue
         """
-        comment_dates = [str_to_datetime(comment['created_at']) for comment in item['comments_data']
-                         if item['user']['login'] != comment['user']['login']]
-        reaction_dates = [str_to_datetime(reaction['created_at']) for reaction in item['reactions_data']
-                          if item['user']['login'] != reaction['user']['login']]
-        reaction_dates.extend(comment_dates)
-        if reaction_dates:
-            return min(reaction_dates)
+        dates = []
+        deleted_user_login = {'login': DELETED_USER_LOGIN}
+
+        for comment in item['comments_data']:
+            # Add deleted (ghost) user
+            if not comment['user']:
+                comment['user'] = deleted_user_login
+
+            # skip comments of the issue creator
+            if item['user']['login'] == comment['user']['login']:
+                continue
+
+            dates.append(str_to_datetime(comment['created_at']))
+
+        for reaction in item['reactions_data']:
+            # Add deleted (ghost) user
+            if not reaction['user']:
+                reaction['user'] = deleted_user_login
+
+            # skip reactions of the issue creator
+            if item['user']['login'] == reaction['user']['login']:
+                continue
+
+            dates.append(str_to_datetime(reaction['created_at']))
+
+        if dates:
+            return min(dates)
+
         return None
 
     def get_time_to_merge_request_response(self, item):
@@ -192,9 +218,9 @@ class GitHubEnrich2(Enrich):
         """
         review_dates = []
         for comment in item['review_comments_data']:
-            # skip comments of ghost users
+            # Add deleted (ghost) user
             if not comment['user']:
-                continue
+                comment['user'] = {'login': DELETED_USER_LOGIN}
 
             # skip comments of the pull request creator
             if item['user']['login'] == comment['user']['login']:
@@ -285,6 +311,16 @@ class GitHubEnrich2(Enrich):
             ecomment['is_github_{}'.format(ISSUE_COMMENT_TYPE)] = 1
             ecomment['is_github_comment'] = 1
 
+            # Add user_login
+            user_data = comment.get('user_data', None)
+            if not user_data:
+                user_data = {
+                    'login': DELETED_USER_LOGIN,
+                    'name': DELETED_USER_NAME
+                }
+                comment['user_data'] = user_data
+            ecomment['user_login'] = user_data['login']
+
             if self.sortinghat:
                 ecomment.update(self.get_item_sh(comment, self.comment_roles, 'updated_at'))
 
@@ -357,6 +393,16 @@ class GitHubEnrich2(Enrich):
             ecomment.pop('is_github2_{}'.format(REVIEW_COMMENT_TYPE))
             ecomment['is_github_{}'.format(REVIEW_COMMENT_TYPE)] = 1
             ecomment['is_github_comment'] = 1
+
+            # Add user_login
+            user_data = comment.get('user_data', None)
+            if not user_data:
+                user_data = {
+                    'login': DELETED_USER_LOGIN,
+                    'name': DELETED_USER_NAME
+                }
+                comment['user_data'] = user_data
+            ecomment['user_login'] = user_data['login']
 
             if self.sortinghat:
                 ecomment.update(self.get_item_sh(comment, self.comment_roles, 'updated_at'))
@@ -464,7 +510,7 @@ class GitHubEnrich2(Enrich):
             rich_pr['author_name'] = None
 
         merged_by = pull_request.get('merged_by_data', None)
-        if merged_by and merged_by is not None:
+        if merged_by and merged_by != USER_NOT_AVAILABLE:
             rich_pr['merge_author_login'] = merged_by['login']
             rich_pr['merge_author_name'] = merged_by['name']
             rich_pr["merge_author_domain"] = self.get_email_domain(merged_by['email']) if merged_by['email'] else None
@@ -572,8 +618,7 @@ class GitHubEnrich2(Enrich):
             rich_issue['author_name'] = None
 
         assignee = issue.get('assignee_data', None)
-        if assignee and assignee is not None:
-            assignee = issue['assignee_data']
+        if assignee and assignee != USER_NOT_AVAILABLE:
             rich_issue['assignee_login'] = assignee['login']
             rich_issue['assignee_name'] = assignee['name']
             rich_issue["assignee_domain"] = self.get_email_domain(assignee['email']) if assignee['email'] else None
