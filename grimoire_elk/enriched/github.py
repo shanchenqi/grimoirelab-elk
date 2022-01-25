@@ -533,6 +533,7 @@ class GitHubEnrich(Enrich):
         rich_pr.update(self.get_grimoire_fields(pull_request['created_at'], "pull_request"))
 
         item[self.get_field_date()] = rich_pr[self.get_field_date()]
+        # 添加roles_id/uuid/dimain/gender等字段
         rich_pr.update(self.get_item_sh(item, self.pr_roles))
 
         return rich_pr
@@ -603,6 +604,7 @@ class GitHubEnrich(Enrich):
         labels = []
         [labels.append(label['name']) for label in issue['labels'] if 'labels' in issue]
         rich_issue['labels'] = labels
+        rich_issue['num_comments'] = issue['comments']
 
         rich_issue['pull_request'] = True
         rich_issue['item_type'] = 'pull request'
