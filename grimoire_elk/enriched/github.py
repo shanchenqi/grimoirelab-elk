@@ -533,7 +533,6 @@ class GitHubEnrich(Enrich):
         rich_pr.update(self.get_grimoire_fields(pull_request['created_at'], "pull_request"))
 
         item[self.get_field_date()] = rich_pr[self.get_field_date()]
-        # 添加roles_id/uuid/dimain/gender等字段
         rich_pr.update(self.get_item_sh(item, self.pr_roles))
 
         return rich_pr
