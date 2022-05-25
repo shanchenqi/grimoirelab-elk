@@ -89,6 +89,27 @@ class BugzillaRESTEnrich(Enrich):
         identity['email'] = user.get('email', None)
         identity['name'] = user.get('real_name', None)
         return identity
+    
+    def get_time_to_issue_first_response(self, item):
+        """Get the first date at which a review was made on the bugzilla by someone
+        other than the user who created the bugzilla
+        """
+        comments_dates = []
+        for comment in item['comments']:
+            # skip comments of ghost users
+            if not comment['creator_id']:
+                continue
+
+            # skip comments of the pull request creator
+            if item['creator_detail']['id'] == comment['creator_id']:
+                continue
+
+            comments_dates.append(str_to_datetime(comment['creation_time']))
+
+        if comments_dates:
+            return min(comments_dates)
+
+        return None
 
     @metadata
     def get_rich_item(self, item):
@@ -166,6 +187,9 @@ class BugzillaRESTEnrich(Enrich):
             eitem['assigned_to_org_name'] = eitem['assigned_to_detail_org_name']
             eitem['assigned_to_uuid'] = eitem['assigned_to_detail_uuid']
 
+        min_comment_date = self.get_time_to_issue_first_response(issue)
+        eitem['issue_first_response'] = get_time_diff_days(str_to_datetime(issue['creation_time']), min_comment_date)
+        
         if self.prjs_map:
             eitem.update(self.get_item_project(eitem))
 
