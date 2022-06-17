@@ -1,0 +1,5 @@
+title: 'Use entry points to support plugin mechanism'
+category: New feature
+author: ChenqiShan <chenqishan337@gmail.com>, LinHaiming <lhming23@outlook.com>
+issue: 
+notes: The plugin solution is used to incubate a new data source backend solution. 
